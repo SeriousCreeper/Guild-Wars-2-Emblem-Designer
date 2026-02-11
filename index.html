@@ -7,6 +7,14 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- SVG noise filter for painterly background texture -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </svg>
+
   <header class="app-header">
     <h1>Guild Emblem Designer</h1>
     <div class="guild-search">
