@@ -411,7 +411,7 @@ function drawColoredLayerSimple(ctx, img, color, size) {
 function renderPreview() {
   const canvas = dom.previewCanvas;
   const ctx = canvas.getContext('2d');
-  renderEmblemToCanvas(ctx, 256);
+  renderEmblemToCanvas(ctx, canvas.width);
 }
 
 // ---- Color Controls ----
@@ -739,7 +739,7 @@ function handleLoadCode() {
  * Render the current emblem to a canvas and trigger a PNG download.
  */
 async function handleSaveImage() {
-  const SIZE = 256;
+  const SIZE = 512;
   const canvas = document.createElement('canvas');
   canvas.width = SIZE;
   canvas.height = SIZE;
