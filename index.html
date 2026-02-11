@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GW2 Guild Emblem Designer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Guild Emblem Designer</h1>
+    <div class="guild-search">
+      <input type="text" id="guild-search-input" placeholder="Look up guild by name..." aria-label="Guild name search">
+      <button id="guild-search-btn">Search</button>
+      <span class="guild-search-status" id="guild-search-status"></span>
+    </div>
+  </header>
+
+  <main class="app-layout">
+    <!-- Left Column: Selection Grids -->
+    <section class="left-column">
+
+      <!-- Foreground (Emblem Design) Selection -->
+      <div class="selection-section">
+        <h2 class="section-title">Emblem Design</h2>
+        <div class="grid-nav">
+          <button class="nav-arrow nav-prev" id="fg-prev" aria-label="Previous foregrounds">&#9664;</button>
+          <div class="grid-container" id="fg-grid"></div>
+          <button class="nav-arrow nav-next" id="fg-next" aria-label="Next foregrounds">&#9654;</button>
+        </div>
+        <div class="page-indicator" id="fg-page-indicator"></div>
+      </div>
+
+      <!-- Background Shape Selection -->
+      <div class="selection-section">
+        <h2 class="section-title">Background Shape</h2>
+        <div class="grid-nav">
+          <button class="nav-arrow nav-prev" id="bg-prev" aria-label="Previous backgrounds">&#9664;</button>
+          <div class="grid-container" id="bg-grid"></div>
+          <button class="nav-arrow nav-next" id="bg-next" aria-label="Next backgrounds">&#9654;</button>
+        </div>
+        <div class="page-indicator" id="bg-page-indicator"></div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Preview + Controls -->
+    <section class="right-column">
+
+      <!-- Preview -->
+      <div class="preview-section">
+        <h2 class="section-title">Preview</h2>
+        <div class="preview-container" id="preview-container">
+          <div class="preview-bg-layers" id="preview-bg-layers"></div>
+          <div class="preview-fg-layers" id="preview-fg-layers"></div>
+        </div>
+      </div>
+
+      <!-- Flip Controls -->
+      <div class="flip-controls">
+        <div class="flip-group">
+          <span class="flip-label">Emblem</span>
+          <button class="flip-btn" id="fg-flip-h" title="Flip emblem horizontally">&#8596;</button>
+          <button class="flip-btn" id="fg-flip-v" title="Flip emblem vertically">&#8597;</button>
+        </div>
+        <div class="flip-group">
+          <span class="flip-label">Background</span>
+          <button class="flip-btn" id="bg-flip-h" title="Flip background horizontally">&#8596;</button>
+          <button class="flip-btn" id="bg-flip-v" title="Flip background vertically">&#8597;</button>
+        </div>
+      </div>
+
+      <!-- Randomize -->
+      <div class="randomize-row">
+        <button class="action-btn" id="btn-random-design" title="Randomize emblem and background shape">Random Design</button>
+        <button class="action-btn" id="btn-random-colors" title="Randomize all three colors">Random Colors</button>
+      </div>
+
+      <!-- Color Controls -->
+      <div class="color-section">
+        <h2 class="section-title">Colors</h2>
+        <div class="color-slots">
+          <button class="color-slot active" id="slot-bg" title="Background color">
+            <span class="slot-swatch" id="slot-bg-swatch"></span>
+            <span class="slot-label">BG</span>
+          </button>
+          <button class="color-slot" id="slot-fg1" title="Emblem primary color">
+            <span class="slot-swatch" id="slot-fg1-swatch"></span>
+            <span class="slot-label">FG1</span>
+          </button>
+          <button class="color-slot" id="slot-fg2" title="Emblem secondary color">
+            <span class="slot-swatch" id="slot-fg2-swatch"></span>
+            <span class="slot-label">FG2</span>
+          </button>
+        </div>
+        <div class="color-palette" id="color-palette"></div>
+      </div>
+
+      <!-- Save / Load / Export -->
+      <div class="actions-section">
+        <h2 class="section-title">Save &amp; Export</h2>
+        <div class="actions-row">
+          <button class="action-btn" id="btn-copy-code" title="Copy emblem code to clipboard">Copy Code</button>
+          <button class="action-btn" id="btn-load-code" title="Load emblem from a code string">Load Code</button>
+          <button class="action-btn primary" id="btn-save-image" title="Download emblem as PNG">Save Image</button>
+        </div>
+        <input type="text" class="code-input" id="code-input" placeholder="Paste emblem code here to load..." aria-label="Emblem code">
+        <span class="actions-status" id="actions-status"></span>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
