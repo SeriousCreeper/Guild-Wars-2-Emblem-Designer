@@ -274,7 +274,7 @@ body {
   width: 256px;
   height: 256px;
   margin: 0 auto;
-  background: var(--bg-inset);
+  background: #35333a;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   overflow: hidden;
