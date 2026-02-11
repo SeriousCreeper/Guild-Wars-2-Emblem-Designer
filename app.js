@@ -804,10 +804,9 @@ async function init() {
     return;
   }
 
-  // Render everything with real data
-  renderFgGrid();
-  renderBgGrid();
-  renderPreview();
+  // Randomize everything on first load
+  randomizeDesign();
+  randomizeColors();
 }
 
 init();
