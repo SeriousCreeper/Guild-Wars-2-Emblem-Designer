@@ -185,8 +185,9 @@ function renderFgGrid() {
   }
 
   pageItems.forEach(fg => {
-    // Use layer 1 (primary color shape) for the thumbnail, not layer 0 (outline)
-    const thumb = createThumb(fg, selectedFgId, fg.layers[1] || fg.layers[0]);
+    // Show both colored layers (primary + secondary) for a complete thumbnail
+    const thumbLayers = [fg.layers[1], fg.layers[2]].filter(Boolean);
+    const thumb = createThumb(fg, selectedFgId, thumbLayers.length > 0 ? thumbLayers : [fg.layers[0]]);
     thumb.addEventListener('click', () => {
       state.selectedFgId = fg.id;
       renderFgGrid();
@@ -229,15 +230,19 @@ function renderBgGrid() {
   dom.bgPageIndicator.textContent = `${bgPage + 1} / ${totalPages}`;
 }
 
-function createThumb(item, selectedId, layerUrl) {
+function createThumb(item, selectedId, layerUrls) {
   const el = document.createElement('div');
   el.className = 'grid-thumb' + (item.id === selectedId ? ' selected' : '');
 
-  const layer = document.createElement('div');
-  layer.className = 'thumb-layer';
-  layer.style.webkitMaskImage = `url('${layerUrl}')`;
-  layer.style.maskImage = `url('${layerUrl}')`;
-  el.appendChild(layer);
+  const urls = Array.isArray(layerUrls) ? layerUrls : [layerUrls];
+  urls.forEach(url => {
+    if (!url) return;
+    const layer = document.createElement('div');
+    layer.className = 'thumb-layer';
+    layer.style.webkitMaskImage = `url('${url}')`;
+    layer.style.maskImage = `url('${url}')`;
+    el.appendChild(layer);
+  });
 
   return el;
 }
