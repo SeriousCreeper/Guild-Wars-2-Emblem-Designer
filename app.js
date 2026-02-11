@@ -423,6 +423,34 @@ async function gw2ColorToHex(colorId) {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+/**
+ * Parse a '#RRGGBB' hex string into [r, g, b] (0-255).
+ */
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+/**
+ * Find the closest palette color to a given hex color using
+ * Euclidean distance in RGB space.
+ */
+function closestPaletteColor(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  let best = PALETTE_COLORS[0];
+  let bestDist = Infinity;
+
+  for (const pc of PALETTE_COLORS) {
+    const [pr, pg, pb] = hexToRgb(pc);
+    const dist = (r - pr) ** 2 + (g - pg) ** 2 + (b - pb) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = pc;
+    }
+  }
+  return best;
+}
+
 function setSearchStatus(msg, type) {
   dom.guildSearchStatus.textContent = msg;
   dom.guildSearchStatus.className = 'guild-search-status' + (type ? ` ${type}` : '');
@@ -472,12 +500,12 @@ async function lookupGuild(name) {
     const fg1Hex = fg1ColorId ? await gw2ColorToHex(fg1ColorId) : state.colors.fg1;
     const fg2Hex = fg2ColorId ? await gw2ColorToHex(fg2ColorId) : state.colors.fg2;
 
-    // Step 4: Apply everything to state
+    // Step 4: Snap colors to closest available palette color & apply to state
     state.selectedFgId = emblem.foreground.id;
     state.selectedBgId = emblem.background.id;
-    state.colors.bg = bgHex;
-    state.colors.fg1 = fg1Hex;
-    state.colors.fg2 = fg2Hex;
+    state.colors.bg = closestPaletteColor(bgHex);
+    state.colors.fg1 = closestPaletteColor(fg1Hex);
+    state.colors.fg2 = closestPaletteColor(fg2Hex);
 
     // Parse flip flags
     const flags = emblem.flags || [];
