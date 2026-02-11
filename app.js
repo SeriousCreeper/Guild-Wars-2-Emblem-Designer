@@ -481,17 +481,12 @@ function pickRandom(arr) {
 function randomizeDesign() {
   state.selectedFgId = pickRandom(state.foregrounds).id;
   state.selectedBgId = pickRandom(state.backgrounds).id;
-  state.flip.fgH = Math.random() < 0.5;
-  state.flip.fgV = Math.random() < 0.5;
-  state.flip.bgH = Math.random() < 0.5;
-  state.flip.bgV = Math.random() < 0.5;
 
   navigateToSelectedFg();
   navigateToSelectedBg();
   renderFgGrid();
   renderBgGrid();
   renderPreview();
-  updateFlipButtons();
 }
 
 function randomizeColors() {
