@@ -70,6 +70,13 @@ const state = {
     bgV: false,
   },
   loading: true,
+  // Brightness tuning params (tuned to match in-game rendering)
+  bright: {
+    strength: 1.0,
+    gamma: 0.7,
+    lift: 0.0,
+    colorBoost: 1.35,
+  },
 };
 
 // ---- DOM References ----
@@ -82,8 +89,7 @@ const dom = {
   bgNext: document.getElementById('bg-next'),
   fgPageIndicator: document.getElementById('fg-page-indicator'),
   bgPageIndicator: document.getElementById('bg-page-indicator'),
-  previewBgLayers: document.getElementById('preview-bg-layers'),
-  previewFgLayers: document.getElementById('preview-fg-layers'),
+  previewCanvas: document.getElementById('preview-canvas'),
   fgFlipH: document.getElementById('fg-flip-h'),
   fgFlipV: document.getElementById('fg-flip-v'),
   bgFlipH: document.getElementById('bg-flip-h'),
@@ -247,76 +253,165 @@ function createThumb(item, selectedId, layerUrls) {
   return el;
 }
 
-// ---- Preview Rendering ----
+// ---- Canvas Emblem Rendering ----
 
-function renderPreview() {
-  renderPreviewBg();
-  renderPreviewFg();
-  updateFlipTransforms();
+// Image cache to avoid reloading the same URLs
+const imageCache = {};
+
+function loadImageCached(url) {
+  if (imageCache[url]) return imageCache[url];
+  const promise = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
+    img.src = url;
+  });
+  imageCache[url] = promise;
+  return promise;
 }
 
-function renderPreviewBg() {
-  dom.previewBgLayers.innerHTML = '';
-
+/**
+ * Render the full emblem onto a canvas context at the given size.
+ * Uses layer 0's red channel as a brightness ratio for the foreground.
+ */
+async function renderEmblemToCanvas(ctx, size) {
   const bg = state.backgrounds.find(b => b.id === state.selectedBgId);
-  if (!bg) return;
-
-  // Background layer 0: single color
-  const layer = document.createElement('div');
-  layer.className = 'preview-layer colored';
-  layer.style.backgroundColor = state.colors.bg;
-  layer.style.webkitMaskImage = `url('${bg.layers[0]}')`;
-  layer.style.maskImage = `url('${bg.layers[0]}')`;
-  dom.previewBgLayers.appendChild(layer);
-}
-
-function renderPreviewFg() {
-  dom.previewFgLayers.innerHTML = '';
-
   const fg = state.foregrounds.find(f => f.id === state.selectedFgId);
-  if (!fg) return;
 
-  // Layer 0: outline/shadow (rendered as-is, no color tinting)
-  if (fg.layers[0]) {
-    const layer0 = document.createElement('div');
-    layer0.className = 'preview-layer outline';
-    const img = document.createElement('img');
-    img.src = fg.layers[0];
-    img.alt = '';
-    img.draggable = false;
-    layer0.appendChild(img);
-    dom.previewFgLayers.appendChild(layer0);
+  ctx.clearRect(0, 0, size, size);
+
+  // Draw background (single colored layer, no boost — BG colors are accurate as-is)
+  const boost = state.bright.colorBoost;
+  if (bg && bg.layers[0]) {
+    const img = await loadImageCached(bg.layers[0]);
+    drawColoredLayer(ctx, img, state.colors.bg, size, state.flip.bgH, state.flip.bgV);
   }
 
-  // Layer 1: primary foreground color (FG1)
-  if (fg.layers[1]) {
-    const layer1 = document.createElement('div');
-    layer1.className = 'preview-layer colored';
-    layer1.style.backgroundColor = state.colors.fg1;
-    layer1.style.webkitMaskImage = `url('${fg.layers[1]}')`;
-    layer1.style.maskImage = `url('${fg.layers[1]}')`;
-    dom.previewFgLayers.appendChild(layer1);
-  }
+  // Draw foreground with layer 0 brightness modulation
+  if (fg) {
+    // Load all needed layers in parallel
+    const [img0, img1, img2] = await Promise.all([
+      fg.layers[0] ? loadImageCached(fg.layers[0]) : null,
+      fg.layers[1] ? loadImageCached(fg.layers[1]) : null,
+      fg.layers[2] ? loadImageCached(fg.layers[2]) : null,
+    ]);
 
-  // Layer 2: secondary foreground color (FG2)
-  if (fg.layers[2]) {
-    const layer2 = document.createElement('div');
-    layer2.className = 'preview-layer colored';
-    layer2.style.backgroundColor = state.colors.fg2;
-    layer2.style.webkitMaskImage = `url('${fg.layers[2]}')`;
-    layer2.style.maskImage = `url('${fg.layers[2]}')`;
-    dom.previewFgLayers.appendChild(layer2);
+    // Render colored layers onto a temp canvas
+    const tmp = document.createElement('canvas');
+    tmp.width = size;
+    tmp.height = size;
+    const tctx = tmp.getContext('2d');
+
+    // Apply foreground flips to the temp canvas
+    tctx.save();
+    if (state.flip.fgH || state.flip.fgV) {
+      tctx.translate(state.flip.fgH ? size : 0, state.flip.fgV ? size : 0);
+      tctx.scale(state.flip.fgH ? -1 : 1, state.flip.fgV ? -1 : 1);
+    }
+
+    // Layer 1: FG1 color (boosted)
+    if (img1) {
+      drawColoredLayerSimple(tctx, img1, boostColor(state.colors.fg1, boost), size);
+    }
+
+    // Layer 2: FG2 color (boosted)
+    if (img2) {
+      drawColoredLayerSimple(tctx, img2, boostColor(state.colors.fg2, boost), size);
+    }
+
+    tctx.restore();
+
+    // Apply layer 0 brightness modulation
+    if (img0) {
+      // Get the brightness data from layer 0's red channel
+      const bCanvas = document.createElement('canvas');
+      bCanvas.width = size;
+      bCanvas.height = size;
+      const bctx = bCanvas.getContext('2d');
+
+      bctx.save();
+      if (state.flip.fgH || state.flip.fgV) {
+        bctx.translate(state.flip.fgH ? size : 0, state.flip.fgV ? size : 0);
+        bctx.scale(state.flip.fgH ? -1 : 1, state.flip.fgV ? -1 : 1);
+      }
+      bctx.drawImage(img0, 0, 0, size, size);
+      bctx.restore();
+
+      const brightnessData = bctx.getImageData(0, 0, size, size).data;
+
+      // Find the max red channel value for normalization
+      // (layer 0 often doesn't use the full 0-255 range)
+      let maxRed = 0;
+      for (let i = 0; i < brightnessData.length; i += 4) {
+        if (brightnessData[i + 3] > 0 && brightnessData[i] > maxRed) {
+          maxRed = brightnessData[i];
+        }
+      }
+      if (maxRed === 0) maxRed = 255;
+
+      // Modulate the colored layers by layer 0's brightness
+      const fgData = tctx.getImageData(0, 0, size, size);
+      const pixels = fgData.data;
+      const { strength, gamma, lift } = state.bright;
+
+      for (let i = 0; i < pixels.length; i += 4) {
+        // Normalize red channel to 0-1 based on actual range
+        const raw = brightnessData[i] / maxRed;
+        const bAlpha = brightnessData[i + 3] / 255;
+
+        if (bAlpha > 0 && pixels[i + 3] > 0) {
+          const curved = Math.pow(raw, gamma);
+          const brightness = lift + (1 - lift) * (1 - (1 - curved) * strength);
+          pixels[i]     = Math.min(255, Math.round(pixels[i] * brightness));
+          pixels[i + 1] = Math.min(255, Math.round(pixels[i + 1] * brightness));
+          pixels[i + 2] = Math.min(255, Math.round(pixels[i + 2] * brightness));
+        }
+      }
+
+      tctx.putImageData(fgData, 0, 0);
+    }
+
+    // Draw the final foreground onto the main canvas
+    ctx.drawImage(tmp, 0, 0);
   }
 }
 
-function updateFlipTransforms() {
-  const fgScaleX = state.flip.fgH ? -1 : 1;
-  const fgScaleY = state.flip.fgV ? -1 : 1;
-  dom.previewFgLayers.style.transform = `scale(${fgScaleX}, ${fgScaleY})`;
+/**
+ * Boost a hex color's brightness by a multiplier.
+ * Values > 1 brighten, 1 = unchanged. Clamped to valid RGB.
+ */
+function boostColor(hex, factor) {
+  if (factor === 1) return hex;
+  const [r, g, b] = hexToRgb(hex);
+  const br = Math.min(255, Math.round(r * factor));
+  const bg = Math.min(255, Math.round(g * factor));
+  const bb = Math.min(255, Math.round(b * factor));
+  return `#${br.toString(16).padStart(2, '0')}${bg.toString(16).padStart(2, '0')}${bb.toString(16).padStart(2, '0')}`;
+}
 
-  const bgScaleX = state.flip.bgH ? -1 : 1;
-  const bgScaleY = state.flip.bgV ? -1 : 1;
-  dom.previewBgLayers.style.transform = `scale(${bgScaleX}, ${bgScaleY})`;
+/**
+ * Draw a colored layer without flipping (flip is handled by the caller).
+ */
+function drawColoredLayerSimple(ctx, img, color, size) {
+  const tmp = document.createElement('canvas');
+  tmp.width = size;
+  tmp.height = size;
+  const tctx = tmp.getContext('2d');
+
+  tctx.drawImage(img, 0, 0, size, size);
+  tctx.globalCompositeOperation = 'source-in';
+  tctx.fillStyle = color;
+  tctx.fillRect(0, 0, size, size);
+
+  ctx.drawImage(tmp, 0, 0);
+}
+
+/** Render the preview canvas. */
+function renderPreview() {
+  const canvas = dom.previewCanvas;
+  const ctx = canvas.getContext('2d');
+  renderEmblemToCanvas(ctx, 256);
 }
 
 // ---- Color Controls ----
@@ -366,7 +461,7 @@ function setActiveSlot(slot) {
 
 function toggleFlip(key) {
   state.flip[key] = !state.flip[key];
-  updateFlipTransforms();
+  renderPreview();
   updateFlipButtons();
 }
 
@@ -647,7 +742,6 @@ function handleLoadCode() {
 
 /**
  * Render the current emblem to a canvas and trigger a PNG download.
- * Loads all layer images, draws them with proper colors and flips.
  */
 async function handleSaveImage() {
   const SIZE = 256;
@@ -659,35 +753,7 @@ async function handleSaveImage() {
   setActionsStatus('Rendering image...', '');
 
   try {
-    const bg = state.backgrounds.find(b => b.id === state.selectedBgId);
-    const fg = state.foregrounds.find(f => f.id === state.selectedFgId);
-
-    // Draw background layer (colored)
-    if (bg && bg.layers[0]) {
-      const img = await loadImage(bg.layers[0]);
-      drawColoredLayer(ctx, img, state.colors.bg, SIZE, state.flip.bgH, state.flip.bgV);
-    }
-
-    // Draw foreground layers
-    if (fg) {
-      // Layer 0: outline (as-is)
-      if (fg.layers[0]) {
-        const img = await loadImage(fg.layers[0]);
-        drawPlainLayer(ctx, img, SIZE, state.flip.fgH, state.flip.fgV);
-      }
-
-      // Layer 1: FG1 color
-      if (fg.layers[1]) {
-        const img = await loadImage(fg.layers[1]);
-        drawColoredLayer(ctx, img, state.colors.fg1, SIZE, state.flip.fgH, state.flip.fgV);
-      }
-
-      // Layer 2: FG2 color
-      if (fg.layers[2]) {
-        const img = await loadImage(fg.layers[2]);
-        drawColoredLayer(ctx, img, state.colors.fg2, SIZE, state.flip.fgH, state.flip.fgV);
-      }
-    }
+    await renderEmblemToCanvas(ctx, SIZE);
 
     // Trigger download
     const link = document.createElement('a');
@@ -702,20 +768,8 @@ async function handleSaveImage() {
   }
 }
 
-/** Load an image with CORS enabled. Returns a promise resolving to the Image element. */
-function loadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
-    img.src = url;
-  });
-}
-
 /**
- * Draw a white image tinted to the given color.
- * Uses a temporary canvas to composite: fill color, then use source image as mask via 'destination-in'.
+ * Draw a colored layer with flipping. Used only for the background shape.
  */
 function drawColoredLayer(ctx, img, color, size, flipH, flipV) {
   const tmp = document.createElement('canvas');
@@ -723,32 +777,17 @@ function drawColoredLayer(ctx, img, color, size, flipH, flipV) {
   tmp.height = size;
   const tctx = tmp.getContext('2d');
 
-  // Draw the source image (white shape on transparent)
   tctx.drawImage(img, 0, 0, size, size);
-
-  // Tint: fill with color, but only where the image had pixels
   tctx.globalCompositeOperation = 'source-in';
   tctx.fillStyle = color;
   tctx.fillRect(0, 0, size, size);
 
-  // Draw the tinted result onto the main canvas, with flipping
   ctx.save();
   if (flipH || flipV) {
     ctx.translate(flipH ? size : 0, flipV ? size : 0);
     ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
   }
   ctx.drawImage(tmp, 0, 0);
-  ctx.restore();
-}
-
-/** Draw a plain (uncolored) image layer onto the canvas with optional flipping. */
-function drawPlainLayer(ctx, img, size, flipH, flipV) {
-  ctx.save();
-  if (flipH || flipV) {
-    ctx.translate(flipH ? size : 0, flipV ? size : 0);
-    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
-  }
-  ctx.drawImage(img, 0, 0, size, size);
   ctx.restore();
 }
 
@@ -814,6 +853,23 @@ function bindEvents() {
   dom.btnCopyCode.addEventListener('click', handleCopyCode);
   dom.btnLoadCode.addEventListener('click', handleLoadCode);
   dom.btnSaveImage.addEventListener('click', handleSaveImage);
+
+  // Debug brightness sliders
+  function bindSlider(id, stateKey) {
+    const slider = document.getElementById('slider-' + stateKey);
+    const display = document.getElementById('val-' + stateKey);
+    if (!slider) return;
+    slider.addEventListener('input', () => {
+      const val = parseFloat(slider.value);
+      state.bright[stateKey] = val;
+      display.textContent = val.toFixed(2);
+      renderPreview();
+    });
+  }
+  bindSlider('slider-strength', 'strength');
+  bindSlider('slider-gamma', 'gamma');
+  bindSlider('slider-lift', 'lift');
+  bindSlider('slider-colorBoost', 'colorBoost');
 }
 
 // ---- Initialization ----

@@ -311,34 +311,9 @@ body::after {
   overflow: hidden;
 }
 
-.preview-bg-layers,
-.preview-fg-layers {
-  position: absolute;
-  inset: 0;
-  transition: transform 0.2s ease;
-}
-
-.preview-bg-layers .preview-layer,
-.preview-fg-layers .preview-layer {
-  position: absolute;
-  inset: 0;
-}
-
-/* Colored layers use mask-image */
-.preview-layer.colored {
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-}
-
-/* Outline layer rendered as plain image */
-.preview-layer.outline img {
+#preview-canvas {
   width: 100%;
   height: 100%;
-  object-fit: contain;
   display: block;
 }
 
@@ -550,6 +525,28 @@ body::after {
 
 .actions-status.error {
   color: #cc4444;
+}
+
+/* ---- Debug Sliders ---- */
+.debug-slider {
+  margin-bottom: 8px;
+}
+
+.debug-slider label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+
+.debug-slider label span {
+  color: var(--accent-gold);
+  font-weight: 600;
+}
+
+.debug-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent-gold);
 }
 
 /* ---- Loading State ---- */

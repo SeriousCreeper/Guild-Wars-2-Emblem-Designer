@@ -60,8 +60,7 @@
       <div class="preview-section">
         <h2 class="section-title">Preview</h2>
         <div class="preview-container" id="preview-container">
-          <div class="preview-bg-layers" id="preview-bg-layers"></div>
-          <div class="preview-fg-layers" id="preview-fg-layers"></div>
+          <canvas id="preview-canvas" width="256" height="256"></canvas>
         </div>
       </div>
 
@@ -116,6 +115,28 @@
         <input type="text" class="code-input" id="code-input" placeholder="Paste emblem code here to load..." aria-label="Emblem code">
         <span class="actions-status" id="actions-status"></span>
       </div>
+
+      <!-- Debug: Brightness Tuning (uncomment to re-enable)
+      <div class="actions-section" id="debug-panel">
+        <h2 class="section-title">Brightness Tuning</h2>
+        <div class="debug-slider">
+          <label for="slider-strength">Strength: <span id="val-strength">1.00</span></label>
+          <input type="range" id="slider-strength" min="0" max="1" step="0.01" value="1.00">
+        </div>
+        <div class="debug-slider">
+          <label for="slider-gamma">Gamma: <span id="val-gamma">0.70</span></label>
+          <input type="range" id="slider-gamma" min="0.1" max="3" step="0.05" value="0.70">
+        </div>
+        <div class="debug-slider">
+          <label for="slider-lift">Lift (min brightness): <span id="val-lift">0.00</span></label>
+          <input type="range" id="slider-lift" min="0" max="1" step="0.01" value="0.00">
+        </div>
+        <div class="debug-slider">
+          <label for="slider-colorBoost">Color Boost: <span id="val-colorBoost">1.35</span></label>
+          <input type="range" id="slider-colorBoost" min="1" max="3" step="0.05" value="1.35">
+        </div>
+      </div>
+      -->
 
     </section>
   </main>
